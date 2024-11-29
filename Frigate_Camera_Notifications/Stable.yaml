@@ -1164,6 +1164,10 @@ action:
                       topic: "{{mqtt_topic}}"
                       payload: "{{ id }}"
                       value_template: "{{ value_json['after']['id'] }}"
+                    - platform: mqtt
+                      topic: frigate/events/summary
+                      payload: "{{ id }}"
+                      value_template: "{{ value_json['after']['id'] }}"
                   timeout:
                     minutes: 2
                   continue_on_timeout: false
