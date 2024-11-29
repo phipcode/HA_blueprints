@@ -1307,8 +1307,10 @@ action:
                                     attachment:
                                       url: "/api/frigate/notifications/{{id}}/{{attachment}}.jpg"
                                     push:
-                                      sound: "{{ iif(update, 'none', sound) }}"
-                                      interruption-level: "{{ iif(critical, 'critical', 'active') }}"
+                                      sound:
+                                        name: "{{ iif(update, 'none', sound) }}"
+                                        volume: "{{ iif((update or sound == 'none'), 0, volume) }}"
+                                        critical: "{{ iif(critical, 1, 0) }}"
                                     entity_id: "{{ iif(ios_live_view, input_camera, '' ) }}"
                                     # Actions
                                     actions:
@@ -1327,7 +1329,7 @@ action:
                                 - service: "notify.{{ group_target }}"
                                   data:
                                     title: "{{title}}"
-                                    message: "{{message}}"
+                                    message: "{{message}} {{summary}}"
                                     data:
                                       tag: "{{ id }}{{'-loitering' if loitering}}"
                                       group: "{{ camera }}-frigate-notification{{'-loitering' if loitering}}"
