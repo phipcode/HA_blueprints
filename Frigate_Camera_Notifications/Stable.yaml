@@ -1251,7 +1251,7 @@ action:
                                   Stationary Moved: {{stationary_moved}}, 
                                   Entered Zones Changed: {{'True' if event['before']['entered_zones'] != event['after']['entered_zones'] else 'False'}}{{' - Disabled' if not zone_only}}, 
                                   sublabel changed: {{ sub_label != sub_label_before }}{{' - Disabled' if not update_sub_label}}, 
-                                  summary_from_wait_trigger: {{ wait.trigger.payload_json['after']['summary'] }}
+                                  summary_from_wait_trigger: {{ wait.trigger.payload_json['after']['summary'] }},
                                 Conditions: 
                                   Loitering: {{loitering}}
                                     or
