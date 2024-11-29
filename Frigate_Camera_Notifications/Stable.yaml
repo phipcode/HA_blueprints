@@ -1283,7 +1283,7 @@ action:
                     - conditions: "{{ new_summary or loitering or (not home and zone_filter and zone_multi_filter and state_true and (new_snapshot or presence_changed or stationary_moved or zone_only_changed or entered_zones_changed or sub_label_changed)) }}"
                       sequence:
                         - choose:
-                            - conditions: "{{ not group_target }}"
+                            - conditions: "{{ not notify_group_target }}"
                               sequence:
                                 - device_id: !input notify_device
                                   domain: mobile_app
@@ -1295,7 +1295,7 @@ action:
                                     group: "{{ camera }}-frigate-notification{{'-loitering' if loitering}}"
                                     color: "{{color}}"
                                     # Android Specific
-                                    image: "/api/frigate/notifications/{{id}}/{{attachment}}.jpg?format=android"
+                                    image: "{{base_url}}/api/frigate{{client_id}}/notifications/{{id}}/{{attachment}}{{'&' if '?' in attachment else '?'}}format=android"
                                     clickAction: "{{tap_action}}"
                                     ttl: "{{ iif(critical, 0, 3600000) }}"
                                     priority: "{{ iif(critical, 'high', 'normal') }}"
@@ -1305,7 +1305,7 @@ action:
                                     # iOS Specific
                                     url: "{{tap_action}}"
                                     attachment:
-                                      url: "/api/frigate/notifications/{{id}}/{{attachment}}.jpg"
+                                      url: "{{base_url}}/api/frigate{{client_id}}/notifications/{{id}}/{{attachment}}"
                                     push:
                                       sound:
                                         name: "{{ iif(update, 'none', sound) }}"
