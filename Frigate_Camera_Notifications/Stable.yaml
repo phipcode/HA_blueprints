@@ -1435,7 +1435,7 @@ action:
                                 - service: "notify.{{ notify_group_target }}"
                                   data:
                                     title: "{{title}}"
-                                    message: "{{message}} {{summary}}
+                                    message: "{{message}} {{summary}}"
                                     data:
                                       tag: "{{ id }}{{'-loitering' if loitering}}"
                                       group: "{{ group }}"
