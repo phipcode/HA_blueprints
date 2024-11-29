@@ -1435,7 +1435,7 @@ action:
                                 - service: "notify.{{ notify_group_target }}"
                                   data:
                                     title: "{{title}}"
-                                    message: "{{message}} {{summary}}
+                                    message: "{{message}} {{summary}}"
                                     data:
                                       tag: "{{ id }}{{'-loitering' if loitering}}"
                                       group: "{{ group }}"
@@ -1539,4 +1539,4 @@ action:
                                       uri: "{{url_3}}"
                                       icon: "{{icon_3}}"
                                       destructive: true
-              until: "{{ not wait.trigger or wait.trigger.payload_json['type'] == 'end' }}"
+              until: "{{ not wait.trigger or (wait.trigger.payload_json['type'] == 'end' and summary != '') }}"
