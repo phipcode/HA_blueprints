@@ -944,7 +944,7 @@ action:
                             Title: {{title}}, 
                             Message: {{message}},
                             Subtitle: {{subtitle}}, 
-                            Summary: {{summary}},
+                            Summary: {{summary if summary != '' else '<EMPTY>'}},
                             tap_action: {{tap_action}}, 
                             button 1 Text/URL/Icon: {{iif(button_1, button_1, 'unset')}} ({{url_1}}) {{icon_1}}, 
                             button 2 Text/URL/Icon: {{button_2}} ({{url_2}}) {{icon_2}}, 
@@ -1539,4 +1539,4 @@ action:
                                       uri: "{{url_3}}"
                                       icon: "{{icon_3}}"
                                       destructive: true
-              until: "{{ not wait.trigger or wait.trigger.payload_json['type'] == 'end' }}"
+              until: "{{ not wait.trigger or (wait.trigger.payload_json['type'] == 'end' and summary != '') }}
