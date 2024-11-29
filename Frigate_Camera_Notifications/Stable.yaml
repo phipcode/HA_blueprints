@@ -1539,4 +1539,7 @@ action:
                                       uri: "{{url_3}}"
                                       icon: "{{icon_3}}"
                                       destructive: true
-              until: "{{ not wait.trigger or (wait.trigger.payload_json['type'] == 'end' and summary != '') }}"
+            until: >
+              {{ not wait.trigger or
+                (trigger.payload_json['type'] == 'end' and
+                  (trigger.payload_json['after'].get('summary', '') != '')) }}
