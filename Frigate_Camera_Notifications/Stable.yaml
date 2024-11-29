@@ -881,6 +881,7 @@ action:
               id: "{{ trigger.payload_json['after']['id'] }}"
               object: "{{ trigger.payload_json['after']['label'] }}"
               label: "{{ object | title }}"
+              summary: "{{ trigger.payload_json['after']['summary'] }}"
               # Dynamic Variables per event
               initial_home: "{{presence_entity |reject('in', '') |select('is_state', 'home') |list |length != 0 }}"
               enteredzones: "{{ trigger.payload_json['after']['entered_zones']}}"
@@ -943,6 +944,7 @@ action:
                             Title: {{title}}, 
                             Message: {{message}},
                             Subtitle: {{subtitle}}, 
+                            Summary: {{summary if summary != '' else '<EMPTY>'}}
                             tap_action: {{tap_action}}, 
                             button 1 Text/URL/Icon: {{iif(button_1, button_1, 'unset')}} ({{url_1}}) {{icon_1}}, 
                             button 2 Text/URL/Icon: {{button_2}} ({{url_2}}) {{icon_2}}, 
@@ -1007,7 +1009,7 @@ action:
                             domain: mobile_app
                             type: notify
                             title: "{{title}}"
-                            message: "{{message}}"
+                            message: "{{message}} {{summary}}"
                             data:
                               tag: "{{ id }}"
                               group: "{{ group }}"
@@ -1054,7 +1056,7 @@ action:
                           - service: "notify.{{ notify_group_target }}"
                             data:
                               title: "{{title}}"
-                              message: "{{message}}"
+                              message: "{{message}} {{summary}}"
                               data:
                                 tag: "{{ id }}"
                                 group: "{{ group }}"
@@ -1169,6 +1171,7 @@ action:
                     event: "{{ wait.trigger.payload_json }}"
                     loitering: "{{ loiter_timer and event['before']['motionless_count']/fps/60 < loiter_timer and event['after']['motionless_count']/fps/60 >= loiter_timer }}"
                     new_snapshot: "{{ update_thumbnail and event['before']['snapshot']['frame_time'] != event['after']['snapshot']['frame_time'] }}"
+                    new_summary: "{{ event['before']['summary'] != event['after']['summary'] }}"
                     home: "{{presence_entity |reject('in', '') |select('is_state', 'home') |list |length != 0 }}"
                     presence_changed: "{{ presence_entity |reject('in', '') |expand |map(attribute='last_changed') |list |select('gt', as_datetime(event['before']['frame_time'])) |list |length != 0}}"
                     last_zones: "{{ event['before']['entered_zones']|lower}}"
@@ -1208,6 +1211,7 @@ action:
                       {%else%}
                         {{input_message}}
                       {%endif%}
+                    summary: "{{event['after']['summary'] }}"
                     custom_action_auto_multi: !input custom_action_auto_multi
                 - alias: "Update thumbnail at end of event"
                   choose:
@@ -1237,6 +1241,7 @@ action:
                                   message: {{message}}
                                   iOS sound: {{'Critical' if critical else 'disabled by alert once' if alert_once else 'enabled'}}, 
                                   Android Sound: {{'disabled by alert once' if alert_once else 'enabled'}}, 
+                                  summary: {{summary if summary != '' else '<EMPTY>'}}
                                   iOS url: /api/frigate{{client_id}}/notifications/{{id}}/{{camera + '/clip.mp4' if video|length>0 and wait.trigger.payload_json['type'] == 'end' else attachment }}
                                   video: "{{video}}"
                                   critical: {{critical}}, 
@@ -1246,6 +1251,7 @@ action:
                                   Stationary Moved: {{stationary_moved}}, 
                                   Entered Zones Changed: {{'True' if event['before']['entered_zones'] != event['after']['entered_zones'] else 'False'}}{{' - Disabled' if not zone_only}}, 
                                   sublabel changed: {{ sub_label != sub_label_before }}{{' - Disabled' if not update_sub_label}}, 
+                                  summary_from_wait_trigger: {{ wait.trigger.payload_json['after']['summary'] }},
                                 Conditions: 
                                   Loitering: {{loitering}}
                                     or
@@ -1272,6 +1278,96 @@ action:
                                       required states: {{input_states}}, 
                                       TEST: {{'PASS' if state_true else 'FAIL'}}, 
                                     Custom Filter: {{'PASS' if custom_filter else 'FAIL'}},
+                - alias: "Notify on loitering or significant change"
+                  choose:
+                    - conditions: "{{ new_summary or loitering or (not home and zone_filter and zone_multi_filter and state_true and (new_snapshot or presence_changed or stationary_moved or zone_only_changed or entered_zones_changed or sub_label_changed)) }}"
+                      sequence:
+                        - choose:
+                            - conditions: "{{ not group_target }}"
+                              sequence:
+                                - device_id: !input notify_device
+                                  domain: mobile_app
+                                  type: notify
+                                  title: "{{title}}"
+                                  message: "{{message}} {{summary}}"
+                                  data:
+                                    tag: "{{ id }}{{'-loitering' if loitering}}"
+                                    group: "{{ camera }}-frigate-notification{{'-loitering' if loitering}}"
+                                    color: "{{color}}"
+                                    # Android Specific
+                                    image: "/api/frigate/notifications/{{id}}/{{attachment}}.jpg?format=android"
+                                    clickAction: "{{tap_action}}"
+                                    ttl: "{{ iif(critical, 0, 3600000) }}"
+                                    priority: "{{ iif(critical, 'high', 'normal') }}"
+                                    alert_once: "{{ alert_once }}"
+                                    notification_icon: "{{icon}}"
+                                    channel: "{{channel}}"
+                                    # iOS Specific
+                                    url: "{{tap_action}}"
+                                    attachment:
+                                      url: "/api/frigate/notifications/{{id}}/{{attachment}}.jpg"
+                                    push:
+                                      sound: "{{ iif(update, 'none', sound) }}"
+                                      interruption-level: "{{ iif(critical, 'critical', 'active') }}"
+                                    entity_id: "{{ iif(ios_live_view, input_camera, '' ) }}"
+                                    # Actions
+                                    actions:
+                                      - action: URI
+                                        title: "{{button_1}}"
+                                        uri: "{{url_1}}"
+                                      - action: URI
+                                        title: "{{button_2}}"
+                                        uri: "{{url_2}}"
+                                      - action: "{{ 'URI' if '/' in url_3 else url_3 }}"
+                                        title: "{{button_3}}"
+                                        uri: "{{url_3}}"
+                                        destructive: true
+                            - conditions: "{{ tv }}"
+                              sequence:
+                                - service: "notify.{{ group_target }}"
+                                  data:
+                                    title: "{{title}}"
+                                    message: "{{message}}"
+                                    data:
+                                      tag: "{{ id }}{{'-loitering' if loitering}}"
+                                      group: "{{ camera }}-frigate-notification{{'-loitering' if loitering}}"
+                                      color: "{{color}}"
+                                      # Android Specific
+                                      clickAction: "{{tap_action}}"
+                                      ttl: "{{ iif(critical, 0, 3600000) }}"
+                                      priority: "{{ iif(critical, 'high', 'normal') }}"
+                                      alert_once: "{{ alert_once }}"
+                                      notification_icon: "{{icon}}"
+                                      channel: "{{channel}}"
+                                      # Android/Fire TV
+                                      image:
+                                        url: "{{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg"
+                                      fontsize: "{{tv_size}}"
+                                      position: "{{tv_position}}"
+                                      duration: "{{tv_duration}}"
+                                      transparency: "{{tv_transparency}}"
+                                      interrupt: "{{tv_interrupt}}"
+                                      timeout: 30
+                                      # iOS Specific
+                                      url: "{{tap_action}}"
+                                      attachment:
+                                        url: "/api/frigate/notifications/{{id}}/{{attachment}}.jpg"
+                                      push:
+                                        sound: "{{ iif(update, 'none', sound) }}"
+                                      interruption-level: "{{ iif(critical, 'critical', 'active') }}"
+                                      entity_id: "{{ iif(ios_live_view, input_camera, '' ) }}"
+                                      # Actions
+                                      actions:
+                                        - action: URI
+                                          title: "{{button_1}}"
+                                          uri: "{{url_1}}"
+                                        - action: URI
+                                          title: "{{button_2}}"
+                                          uri: "{{url_2}}"
+                                        - action: "{{ 'URI' if '/' in url_3 else url_3 }}"
+                                          title: "{{button_3}}"
+                                          uri: "{{url_3}}"
+                                          destructive: true
                 - alias: "Custom Action Auto Multi"
                   choose:
                     - conditions:
@@ -1392,7 +1488,7 @@ action:
                             - service: "notify.{{ notify_group_target }}"
                               data:
                                 title: "{{title}}"
-                                message: "{{message}}"
+                                message: "{{message}} {{summary}}"
                                 data:
                                   tag: "{{ id }}{{'-loitering' if loitering}}"
                                   group: "{{ group }}"
